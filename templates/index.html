@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCC-Net Webui</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        .image-section {
+            flex: 4;
+            padding: 20px;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .function-section {
+            flex: 1;
+            padding: 20px;
+            background-color: #dcdcdc;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        button, .upload-btn {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            width: 80%;
+            box-sizing: border-box;
+            height: 40px;
+        }
+
+        button:hover, .upload-btn:hover {
+            background-color: #0056b3;
+        }
+        .checkbox-label {
+            margin-bottom: 10px;
+        }
+        .box {
+            position: absolute;
+            border: 2px solid red;
+            display: none;
+        }
+        .point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: green;
+            border-radius: 50%;
+        }
+        .mask {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            background-size: cover;
+        }
+        .loading-spinner {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 8px solid #f0f0f0;
+            border-top: 8px solid #007BFF;
+            animation: spin 1.2s linear infinite;
+            display: none;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+        }
+
+        #diagnosticTable .checkbox {
+            width: 20px;
+            height: 20px;
+            position: relative;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        #diagnosticTable .checkbox:checked {
+            background-color: #007BFF;
+            border-color: #007BFF;
+        }
+
+        #diagnosticTable .checkbox:checked::after {
+            content: "✓";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 14px;
+        }
+
+        select {
+            padding: 10px;
+            font-size: 14px; /* 增大下拉框字体 */
+            margin: 10px 0;
+            width: 80%;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="image-section">
+            <img id="image" src="{{ url_for('static', filename='images/default_image.jpg') }}" alt="Model Image">
+            <div id="mask" class="mask"></div>
+            <div id="box" class="box"></div>
+            <div id="points-container"></div>
+            <div id="loading" class="loading-spinner" style="display: none;"></div>
+        </div>
+
+        <div class="function-section">
+            <!-- 下拉框选择Maxilla和Mandible -->
+            <select id="selection" style="margin-bottom: 10px; padding: 10px;">
+                <option value="Maxilla">Maxilla</option>
+                <option value="Mandible">Mandible</option>
+            </select>
+            <label for="fileInput" class="upload-btn">Up Load File</label>
+            <button onclick="processImage()">Model Processing</button>
+            <input type="file" id="fileInput" accept="image/*" onchange="displayImage(event)" style="display: none;">
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="showBox" onclick="toggleBox()"> Show Roi Box
+            </div>
+            <div class="checkbox-label">
+                <input type="checkbox" id="showPoint" onclick="togglePoint()"> Show Points
+            </div>
+            <div class="checkbox-label">
+                <input type="checkbox" id="showMask" onclick="toggleMask()"> Show Teeth Mask
+            </div>
+
+            <!-- 表格 -->
+            <table id="diagnosticTable">
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Confidence</th>
+                        <th>Diagnostic Opinion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Spacing</td>
+                        <td id="spacing-confidence"></td>
+                        <td><input type="checkbox" id="spacing-opinion" class="checkbox" disabled></td>
+                    </tr>
+                    <tr>
+                        <td>Normal</td>
+                        <td id="normal-confidence"></td>
+                        <td><input type="checkbox" id="normal-opinion" class="checkbox" disabled></td>
+                    </tr>
+                    <tr>
+                        <td>Mild</td>
+                        <td id="mild-confidence"></td>
+                        <td><input type="checkbox" id="mild-opinion" class="checkbox" disabled></td>
+                    </tr>
+                    <tr>
+                        <td>Moderate</td>
+                        <td id="moderate-confidence"></td>
+                        <td><input type="checkbox" id="moderate-opinion" class="checkbox" disabled></td>
+                    </tr>
+                    <tr>
+                        <td>Severe</td>
+                        <td id="severe-confidence"></td>
+                        <td><input type="checkbox" id="severe-opinion" class="checkbox" disabled></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let imagePath = "";
+        let imgWidth = 0;
+        let imgHeight = 0;
+
+        function resetUI() {
+            // 重置box
+            const box = document.getElementById('box');
+            box.style.display = 'none';
+
+            // 重置points
+            const pointsContainer = document.getElementById('points-container');
+            pointsContainer.innerHTML = '';
+
+            // 重置蒙版
+            const mask = document.getElementById('mask');
+            mask.style.backgroundImage = '';
+            mask.style.display = 'none';
+
+            // 重置表格中的confidence和Diagnostic Opinion
+            const classes = ['Spacing', 'Normal', 'Mild', 'Moderate', 'Severe'];
+            classes.forEach((className) => {
+                const confidenceCell = document.getElementById(`${className.toLowerCase()}-confidence`);
+                const opinionCell = document.getElementById(`${className.toLowerCase()}-opinion`);
+
+                confidenceCell.textContent = '';  // 清空confidence值
+                opinionCell.checked = false;  // 取消选中的诊断意见
+            });
+        }
+
+        function displayImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // 清空现有内容
+                resetUI();
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('image').src = e.target.result;
+                    imagePath = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function toggleBox() {
+            const box = document.getElementById('box');
+            box.style.display = document.getElementById('showBox').checked ? 'block' : 'none';
+        }
+
+        function togglePoint() {
+            const pointsContainer = document.getElementById('points-container');
+            pointsContainer.style.display = document.getElementById('showPoint').checked ? 'block' : 'none';
+        }
+
+        function toggleMask() {
+            const mask = document.getElementById('mask');
+            mask.style.display = document.getElementById('showMask').checked ? 'block' : 'none';
+        }
+
+        function getImageDimensions() {
+            const img = document.getElementById('image');
+            imgWidth = img.naturalWidth;
+            imgHeight = img.naturalHeight;
+        }
+
+        function getDisplayedImageDimensions() {
+            const img = document.getElementById('image');
+            const rect = img.getBoundingClientRect();
+            return { displayedWidth: rect.width, displayedHeight: rect.height };
+        }
+
+        function getImageOffset() {
+            const img = document.getElementById('image');
+            const container = document.querySelector('.image-section');
+            const imgRect = img.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+
+            return { offsetX, offsetY };
+        }
+
+        function processImage() {
+            const loadingSpinner = document.getElementById('loading');
+            loadingSpinner.style.display = 'block';
+
+            // 获取下拉框的选择值
+            const selection = document.getElementById('selection').value;
+            const flag = selection === "Maxilla";  // Maxilla 为 true, Mandible 为 false
+
+            fetch('/process_image', {
+                method: 'POST',
+                body: JSON.stringify({ image_path: imagePath, flag: flag }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const boxes = data.boxes;
+                const points = data.points;
+                const pred_score = data.pred_score;
+                const pred_class = data.pred_class;
+                const maskUrl = data.mask_url;
+
+                const { displayedWidth, displayedHeight } = getDisplayedImageDimensions();
+                const { offsetX, offsetY } = getImageOffset();
+
+                getImageDimensions();
+                const scaleX = displayedWidth / imgWidth;
+                const scaleY = displayedHeight / imgHeight;
+
+                const maskElement = document.getElementById('mask');
+                maskElement.style.backgroundImage = `url(${maskUrl})`;
+                maskElement.style.backgroundSize = `${imgWidth * scaleX}px ${imgHeight * scaleY}px`;
+                maskElement.style.top = (offsetY) + 'px';
+                maskElement.style.left = (offsetX) + 'px';
+                maskElement.style.width = (imgWidth * scaleX) + 'px';
+                maskElement.style.height = (imgHeight * scaleY) + 'px';
+
+                if (boxes && boxes.length > 0) {
+                    const box = document.getElementById('box');
+                    box.style.display = 'block';
+                    const boxData = boxes;
+                    box.style.top = (boxData[1] * scaleY + offsetY) + 'px';
+                    box.style.left = (boxData[0] * scaleX + offsetX) + 'px';
+                    box.style.width = ((boxData[2] - boxData[0]) * scaleX) + 'px';
+                    box.style.height = ((boxData[3] - boxData[1]) * scaleY) + 'px';
+                }
+
+                const pointsContainer = document.getElementById('points-container');
+                pointsContainer.innerHTML = '';
+                if (points && points.length > 0) {
+                    points.forEach(point => {
+                        const pointElement = document.createElement('div');
+                        pointElement.classList.add('point');
+                        pointElement.style.top = (point[1] * scaleY + offsetY) + 'px';
+                        pointElement.style.left = (point[0] * scaleX + offsetX) + 'px';
+                        pointsContainer.appendChild(pointElement);
+                    });
+                }
+
+                // 更新表格内容
+                const classes = ['Spacing', 'Normal', 'Mild', 'Moderate', 'Severe'];
+                classes.forEach((className, index) => {
+                    const confidenceCell = document.getElementById(`${className.toLowerCase()}-confidence`);
+                    const opinionCell = document.getElementById(`${className.toLowerCase()}-opinion`);
+                    const confidenceValue = pred_score[index] ? pred_score[index].toFixed(2) : '0.00';  // Ensure 0 is shown
+                    confidenceCell.textContent = `${confidenceValue}%`;  // Add % symbol
+
+                    if (pred_class === className) {
+                        opinionCell.checked = true;
+                    } else {
+                        opinionCell.checked = false;
+                    }
+                });
+
+                loadingSpinner.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loadingSpinner.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>

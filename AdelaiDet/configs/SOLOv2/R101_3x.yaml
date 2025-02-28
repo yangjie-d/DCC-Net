@@ -1,0 +1,8 @@
+_BASE_: "Base-SOLOv2.yaml"
+MODEL:
+  WEIGHTS: "training_dir/SOLOv2_R101_3x/model_final.pth"
+  RESNETS:
+    DEPTH: 101
+SOLVER:
+  STEPS: (9000, 11000)
+  MAX_ITER: 12000
