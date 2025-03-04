@@ -3,6 +3,8 @@ Welcome to our project. To complete the environment setup, refer to the followin
 
 [AdelaiDet](https://github.com/aim-uofa/AdelaiDet) .
 
+The model weights can be obtained at [DCC-Net](https://huggingface.co/DYangjie/DCC-Net/tree/main), and
+
 After that, all you need to do to use this project is run app.py
 
 Example：
