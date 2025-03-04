@@ -3,7 +3,7 @@ Welcome to our project. To complete the environment setup, refer to the followin
 
 [AdelaiDet](https://github.com/aim-uofa/AdelaiDet) .
 
-The model weights can be obtained at [DCC-Net](https://huggingface.co/DYangjie/DCC-Net/tree/main), and
+The model weights can be obtained at [DCC-Net](https://huggingface.co/DYangjie/DCC-Net/tree/main). Create a subdirectory named weights under the AdelaiDet directory and place the weight files into it.
 
 After that, all you need to do to use this project is run app.py
 
